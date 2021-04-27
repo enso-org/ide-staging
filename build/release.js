@@ -152,7 +152,7 @@ function changelogEntries() {
                 throw `Improper changelog entry header: '${header}'. See the 'CHANGELOG_TEMPLATE.md' for details.`
             }
             let grps    = match.groups
-            let version = new Version(grps.major,grps.minor,grps.patch,grps.tag,grps.tagVersion)
+            let version = new Version(grps.major,grps.minor,grps.patch,grps.tag,grps.tagVersion,grps.rcTag,grps.rcTagVersion)
             entries.push(new ChangelogEntry(version,body))
         }
         firstSection = false

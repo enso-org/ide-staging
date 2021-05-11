@@ -7,12 +7,14 @@ This update contains importnt fixes for the cloud environment.
 #### Visual Environment
 
 #### EnsoGL (rendering engine)
+
 - [You can now launch missiles directly from the GUI][79270]. It was technically
   possible since version 3.0.0-alpha.7, but it was never exposed as a button.
 - [The graph editor stops shaking and running away when you are pasting
   JavaScript code][79271].
 
 #### Runtime
+
 - [The JiT compiler got new optimizations and produces code up to 10x faster
   than C++][79272].
 - [You do not need to keep your computer in -20°C to prevent the engine from

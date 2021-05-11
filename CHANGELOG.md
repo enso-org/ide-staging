@@ -2,14 +2,6 @@
 
 This update contains importnt fixes for the cloud environment.
 
-
-# Enso 2.0.0-alpha.4.rc.1 (2022-04-26)
-
-This update contains major performance improvements and exposes new privacy user
-settings. We will work towards stabilizing it in the next weeks in order to make
-these updates be shipped in a stable release before the end of the year.
-
-
 <br/>![New Features](/docs/assets/tags/new_features.svg)
 
 #### Visual Environment

@@ -1,20 +1,26 @@
+# Enso 2.0.0-alpha.5.rc.1 (2021-05-11)
+
+This update contains importnt fixes for the cloud environment.
+
+
 # Enso 2.0.0-alpha.4.rc.1 (2022-04-26)
 
 This update contains major performance improvements and exposes new privacy user
 settings. We will work towards stabilizing it in the next weeks in order to make
 these updates be shipped in a stable release before the end of the year.
 
+
 <br/>![New Features](/docs/assets/tags/new_features.svg)
 
 #### Visual Environment
 
+#### EnsoGL (rendering engine)
 - [You can now launch missiles directly from the GUI][79270]. It was technically
   possible since version 3.0.0-alpha.7, but it was never exposed as a button.
 - [The graph editor stops shaking and running away when you are pasting
   JavaScript code][79271].
 
 #### Runtime
-
 - [The JiT compiler got new optimizations and produces code up to 10x faster
   than C++][79272].
 - [You do not need to keep your computer in -20°C to prevent the engine from
@@ -30,10 +36,64 @@ these updates be shipped in a stable release before the end of the year.
 
 #### Visual Environment
 
-- [You can now launch missiles directly from the GUI][79270]. It was technically
-  possible since version 3.0.0-alpha.7, but it was never exposed as a button.
-- [The graph editor stops shaking and running away when you are pasting
-  JavaScript code][79271].
+- [Delete key will delete selected nodes][1538].
+- [Fixed an internal error that would make the IDE fail on some browser.][1561].
+  Instead of crashing on browser that don't support the feature we use, we are
+  now just start a little bit slower.
+
+#### EnsoGL (rendering engine)
+
+#### Enso Compiler
+
+- [Updated Enso engine to version 0.2.11][1541].
+
+If you're interested in the enhancements and fixes made to the Enso compiler,
+you can find their release notes
+[here](https://github.com/enso-org/enso/blob/main/RELEASES.md).
+
+[1541]: https://github.com/enso-org/ide/pull/1511
+[1538]: https://github.com/enso-org/ide/pull/1538
+[1561]: https://github.com/enso-org/ide/pull/1561
+
+<br/>
+
+# Enso 2.0.0-alpha.4 (2021-05-04)
+
+<br/>![New Features](/docs/assets/tags/new_features.svg)
+
+#### Visual Environment
+
+- [Window management buttons.][1511]. The IDE now has components for
+  "fullscreen" and "close" buttons. They will when running IDE in a cloud
+  environment where no native window buttons are available.
+- [Customizable backend options][1531]. When invoking Enso IDE through command
+  line interface, it is possible to add the `--` argument separator. All
+  arguments following the separator will be passed to the backend.
+- [Added `--verbose` parameter][1531]. If `--verbose` is given as command line
+  argument, the IDE and the backend will produce more detailed logs.
+
+<br/>![Bug Fixes](/docs/assets/tags/bug_fixes.svg)
+
+- [Fix some internal settings not being applied correctly in the IDE][1539].
+  Some arguments were not passed correctly to the IDE leading to erroneous
+  behaviour in the electron app. This is now fixed.
+
+#### Visual Environment
+
+- [Some command line arguments were not applied correctly in the IDE][1536].
+  Some arguments were not passed correctly to the IDE leading to erroneous
+  behavior or appearance of the electron app. This is now fixed.
+
+#### Enso Compiler
+
+If you're interested in the enhancements and fixes made to the Enso compiler,
+you can find their release notes
+[here](https://github.com/enso-org/enso/blob/main/RELEASES.md).
+
+[1511]: https://github.com/enso-org/ide/pull/1511
+[1536]: https://github.com/enso-org/ide/pull/1536
+[1531]: https://github.com/enso-org/ide/pull/1531
+[1531]: https://github.com/enso-org/ide/pull/1539
 
 #### Runtime
 
@@ -278,6 +338,9 @@ you can find their release notes
 [1438]: https://github.com/enso-org/ide/pull/1438
 [1367]: https://github.com/enso-org/ide/pull/1367
 [1445]: https://github.com/enso-org/ide/pull/1445
+[1447]: https://github.com/enso-org/ide/pull/1447
+[1471]: https://github.com/enso-org/ide/pull/1471
+[1511]: https://github.com/enso-org/ide/pull/1511
 
 <br/>
 

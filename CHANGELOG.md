@@ -1,4 +1,4 @@
-# Enso 2.0.0-alpha.6.rc.1 (2021-05-13)
+# Enso 2.0.0-alpha.6.rc.2 (2021-05-13)
 
 <br/>![New Features](/docs/assets/tags/new_features.svg)
 

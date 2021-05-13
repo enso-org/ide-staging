@@ -1,6 +1,5 @@
 # Enso 2.0.0-alpha.6.rc.1 (2021-05-13)
 
-
 <br/>![New Features](/docs/assets/tags/new_features.svg)
 
 #### Visual Environment
@@ -8,7 +7,6 @@
 #### Runtime
 
 #### Libraries
-
 
 <br/>![Bug Fixes](/docs/assets/tags/bug_fixes.svg)
 
@@ -18,7 +16,6 @@
 
 #### Libraries
 
-
 <br/>![New Learning Resources](/docs/assets/tags/new_learning_resources.svg)
 
 #### Visual Environment
@@ -27,7 +24,6 @@
 
 #### Libraries
 
-
 <br/>![Release Notes](/docs/assets/tags/release_notes.svg)
 
 #### Visual Environment
@@ -35,8 +31,6 @@
 #### Runtime
 
 #### Libraries
-
-
 
 # Enso 2.0.0-alpha.5 (2021-05-14)
 

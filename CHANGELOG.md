@@ -1,3 +1,7 @@
+# Enso 2.0.0-alpha.6 (2021-05-14)
+
+Dummy Entry.
+
 # Enso 2.0.0-alpha.5 (2021-05-14)
 
 <br/>![New Features](/docs/assets/tags/new_features.svg)

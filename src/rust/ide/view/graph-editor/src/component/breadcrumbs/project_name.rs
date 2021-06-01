@@ -145,17 +145,17 @@ impl ProjectNameModel {
         text_field.set_default_text_size(text_size);
         text_field.single_line(true);
 
-        text_field.remove_from_scene_layer_DEPRECATED(&scene.layers.main);
-        text_field.add_to_scene_layer_DEPRECATED(&scene.layers.breadcrumbs_text);
+        text_field.remove_from_scene_layer(&scene.layers.main);
+        text_field.add_to_scene_layer(&scene.layers.panel_text);
         text_field.hover();
 
         let view_logger = Logger::sub(&logger,"view_logger");
         let view        = background::View::new(&view_logger);
 
-        scene.layers.breadcrumbs_background.add_exclusive(&view);
+        scene.layers.panel.add_exclusive(&view);
 
         let project_name = default();
-        Self{app,logger,view,style,display_object,text_field,project_name}.init()
+        Self{app,logger,display_object,view,style,text_field,project_name}.init()
     }
 
     /// Compute the width of the ProjectName view.
@@ -355,7 +355,7 @@ impl ProjectName {
         frp.deselect();
         frp.input.set_name.emit(UNINITIALIZED_PROJECT_NAME.to_string());
 
-        Self{frp,model}
+        Self{model,frp}
     }
 
 }

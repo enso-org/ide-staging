@@ -46,23 +46,38 @@ const ENSO_PROJECT_SPECIAL_MODULE:&str = "Standard.Base.Enso_Project";
 
 
 #[allow(missing_docs)]
-#[fail(display="No action entry with the index {}.", index)]
 #[derive(Copy,Clone,Debug,Fail)]
+#[fail(display="No action entry with the index {}.", index)]
 pub struct NoSuchAction {
     index : usize,
 }
 
 #[allow(missing_docs)]
-#[fail(display="Action entry with index {} is not a suggestion.", index)]
 #[derive(Copy,Clone,Debug,Fail)]
+#[fail(display="Action entry with index {} is not a suggestion.", index)]
 pub struct NotASuggestion {
     index : usize,
 }
 
 #[allow(missing_docs)]
-#[fail(display="An action cannot be executed when searcher is in \"edit node\" mode.")]
+#[derive(Debug,Fail)]
+#[fail(display="An action \"{}\" is not supported: {}", action_label, reason)]
+pub struct NotSupported {
+    action_label : String,
+    reason       : failure::Error,
+}
+
+#[allow(missing_docs)]
 #[derive(Copy,Clone,Debug,Fail)]
+#[fail(display="An action cannot be executed when searcher is in \"edit node\" mode.")]
 pub struct CannotExecuteWhenEditingNode;
+
+#[allow(missing_docs)]
+#[derive(Copy,Clone,Debug,Fail)]
+#[fail(display="Cannot commit expression in current mode ({:?}).", mode)]
+pub struct CannotCommitExpression {
+    mode : Mode
+}
 
 
 // =====================
@@ -351,6 +366,8 @@ pub enum Mode {
     NewNode {position:Option<Position>},
     /// Searcher should edit existing node's expression.
     EditNode {node_id:ast::Id},
+    /// Searcher should show only projects to open.
+    OpenProject,
 }
 
 /// A fragment filled by single picked suggestion.
@@ -452,28 +469,29 @@ pub struct Searcher {
     mode             : Immutable<Mode>,
     database         : Rc<model::SuggestionDatabase>,
     language_server  : Rc<language_server::Connection>,
-    parser           : Parser,
+    ide              : controller::Ide,
     this_arg         : Rc<Option<ThisNode>>,
     position_in_code : Immutable<TextLocation>,
-    project_name     : ImString,
 }
 
 impl Searcher {
     /// Create new Searcher Controller.
     pub async fn new
     ( parent         : impl AnyLogger
+    , ide            : controller::Ide
     , project        : &model::Project
     , method         : language_server::MethodPointer
     , mode           : Mode
     , selected_nodes : Vec<double_representation::node::Id>
     ) -> FallibleResult<Self> {
         let graph = controller::ExecutedGraph::new(&parent,project.clone_ref(),method).await?;
-        Self::new_from_graph_controller(parent,project,graph,mode,selected_nodes)
+        Self::new_from_graph_controller(parent,ide,project,graph,mode,selected_nodes)
     }
 
     /// Create new Searcher Controller, when you have Executed Graph Controller handy.
     pub fn new_from_graph_controller
     ( parent         : impl AnyLogger
+    , ide            : controller::Ide
     , project        : &model::Project
     , graph          : controller::ExecutedGraph
     , mode           : Mode
@@ -492,17 +510,18 @@ impl Searcher {
         let position   = TextLocation::convert_span(module_ast.repr(),&def_span).end;
         let this_arg   = Rc::new(matches!(mode, Mode::NewNode{..}).and_option_from(|| ThisNode::new(selected_nodes,&graph.graph())));
         let ret        = Self {
-            logger,graph,this_arg,
+            logger,graph,this_arg,ide,
             data             : Rc::new(RefCell::new(data)),
             notifier         : default(),
             mode             : Immutable(mode),
             database         : project.suggestion_db(),
             language_server  : project.json_rpc(),
-            parser           : project.parser(),
             position_in_code : Immutable(position),
-            project_name     : project.name(),
         };
-        ret.reload_list();
+        match mode {
+            Mode::OpenProject => ret.load_project_list(),
+            _                 => ret.reload_list(),
+        }
         Ok(ret)
     }
 
@@ -522,13 +541,18 @@ impl Searcher {
     /// in a new action list (the appropriate notification will be emitted).
     pub fn set_input(&self, new_input:String) -> FallibleResult {
         debug!(self.logger, "Manually setting input to {new_input}.");
-        let parsed_input = ParsedInput::new(new_input,&self.parser)?;
+        let parsed_input = ParsedInput::new(new_input,&self.ide.parser())?;
         let old_expr     = self.data.borrow().input.expression.repr();
         let new_expr     = parsed_input.expression.repr();
 
         self.data.borrow_mut().input = parsed_input;
         self.invalidate_fragments_added_by_picking();
-        if old_expr != new_expr {
+        let expression_changed = old_expr != new_expr;
+        // We don't do the reloading in OpenProject mode: the reloading is meant for providing new
+        // code suggestions for arguments of picked method. But in OpenProject mode the input is
+        // for filtering only.
+        let mode_with_reloading = !matches!(*self.mode, Mode::OpenProject);
+        if expression_changed && mode_with_reloading {
             debug!(self.logger, "Reloading list.");
             self.reload_list();
         } else if let Actions::Loaded {list} = self.data.borrow().actions.clone_ref() {
@@ -562,7 +586,7 @@ impl Searcher {
         let id                = self.data.borrow().input.next_completion_id();
         let picked_completion = FragmentAddedByPickingSuggestion {id,picked_suggestion};
         let code_to_insert    = self.code_to_insert(&picked_completion).code;
-        let added_ast         = self.parser.parse_line(&code_to_insert)?;
+        let added_ast         = self.ide.parser().parse_line(&code_to_insert)?;
         let pattern_offset    = self.data.borrow().input.pattern_offset;
         let new_expression    = match self.data.borrow_mut().input.expression.take() {
             None => {
@@ -618,6 +642,33 @@ impl Searcher {
                 Mode::NewNode {position} => self.add_example(&example,position).map(Some),
                 _                        => Err(CannotExecuteWhenEditingNode.into())
             }
+            Action::ProjectManagement(action) => {
+                match self.ide.manage_projects() {
+                    Ok(_) => {
+                        let ide    = self.ide.clone_ref();
+                        let logger = self.logger.clone_ref();
+                        executor::global::spawn(async move {
+                            // We checked that manage_projects returns Some just a moment ago, so
+                            // unwrapping is safe.
+                            let manage_projects = ide.manage_projects().unwrap();
+                            let result = match action {
+                                action::ProjectManagement::CreateNewProject =>
+                                    manage_projects.create_new_project(),
+                                action::ProjectManagement::OpenProject {id,name} =>
+                                    manage_projects.open_project(*id,name.to_string().into()),
+                            };
+                            if let Err(err) = result.await {
+                                error!(logger, "Error when creating new project: {err}");
+                            }
+                        });
+                        Ok(None)
+                    },
+                    Err(err) => Err(NotSupported{
+                        action_label : Action::ProjectManagement(action).to_string(),
+                        reason       : err,
+                    }.into())
+                }
+            }
         }
     }
 
@@ -652,39 +703,45 @@ impl Searcher {
     /// expression, otherwise a new node is added. This will also add all imports required by
     /// picked suggestions.
     pub fn commit_node(&self) -> FallibleResult<ast::Id> {
-        let input_chain = self.data.borrow().input.as_prefix_chain(&self.parser);
+        let expr_and_method = || {
+            let input_chain = self.data.borrow().input.as_prefix_chain(self.ide.parser());
 
-        let expression = match (self.this_var(),input_chain) {
-            (Some(this_var),Some(input)) =>
-                apply_this_argument(this_var,&input.wrapped.into_ast()).repr(),
-            (None,Some(input)) => input.wrapped.into_ast().repr(),
-            (_,None)           => "".to_owned(),
+            let expression = match (self.this_var(),input_chain) {
+                (Some(this_var),Some(input)) =>
+                    apply_this_argument(this_var,&input.wrapped.into_ast()).repr(),
+                (None,Some(input)) => input.wrapped.into_ast().repr(),
+                (_,None)           => "".to_owned(),
+            };
+            let intended_method = self.intended_method();
+            (expression,intended_method)
         };
-        let intended_method = self.intended_method();
 
         // We add the required imports before we create the node/edit its content. This way, we
         // avoid an intermediate state where imports would already be in use but not yet available.
-        self.add_required_imports()?;
-        let id = match *self.mode {
+        match *self.mode {
             Mode::NewNode {position} => {
-                let mut new_node           = NewNodeInfo::new_pushed_back(expression);
-                new_node.metadata          = Some(NodeMetadata {position,intended_method});
-                new_node.introduce_pattern = ASSIGN_NAMES_FOR_NODES;
+                self.add_required_imports()?;
+                let (expression,intended_method) = expr_and_method();
+                let mut new_node                 = NewNodeInfo::new_pushed_back(expression);
+                new_node.metadata                = Some(NodeMetadata {position,intended_method});
+                new_node.introduce_pattern       = ASSIGN_NAMES_FOR_NODES;
                 let graph         = self.graph.graph();
                 if let Some(this) = self.this_arg.deref().as_ref() {
                     this.introduce_pattern(graph.clone_ref())?;
                 }
-                graph.add_node(new_node)?
+                graph.add_node(new_node)
             },
             Mode::EditNode {node_id} => {
+                self.add_required_imports()?;
+                let (expression,intended_method) = expr_and_method();
                 self.graph.graph().set_expression(node_id,expression)?;
                 self.graph.graph().module.with_node_metadata(node_id,Box::new(|md| {
                     md.intended_method = intended_method
                 }))?;
-                node_id
+                Ok(node_id)
             }
-        };
-        Ok(id)
+            mode => Err(CannotCommitExpression{mode}.into())
+        }
     }
 
     /// Adds an example to the graph.
@@ -697,10 +754,10 @@ impl Searcher {
         let graph                 = self.graph.graph();
         let mut module            = double_representation::module::Info{ast:graph.module.ast()};
         let graph_definition_name = graph.graph_info()?.source.name.item;
-        let new_definition        = example.definition_to_add(&module, &self.parser)?;
+        let new_definition        = example.definition_to_add(&module, self.ide.parser())?;
         let new_definition_name   = Ast::var(new_definition.name.name.item.clone());
         let new_definition_place  = double_representation::module::Placement::Before(graph_definition_name);
-        module.add_method(new_definition,new_definition_place,&self.parser)?;
+        module.add_method(new_definition,new_definition_place,self.ide.parser())?;
 
 
         // === Add new node ===
@@ -719,7 +776,7 @@ impl Searcher {
         // === Add imports ===
         let here = self.module_qualified_name();
         for import in example.imports.iter().map(QualifiedName::from_text).filter_map(Result::ok) {
-            module.add_module_import(&here, &self.parser, &import);
+            module.add_module_import(&here,self.ide.parser(),&import);
         }
         graph.module.update_ast(module.ast)?;
         graph.module.set_node_metadata(node.id(),NodeMetadata {position,intended_method})?;
@@ -749,7 +806,7 @@ impl Searcher {
         let without_enso_project = imports.filter(|i| i.to_string() != ENSO_PROJECT_SPECIAL_MODULE);
         for mut import in without_enso_project {
             import.remove_main_module_segment();
-            module.add_module_import(&here, &self.parser, &import);
+            module.add_module_import(&here,self.ide.parser(),&import);
         }
         self.graph.graph().module.update_ast(module.ast)
     }
@@ -779,7 +836,7 @@ impl Searcher {
         let this    = self.this_arg.clone_ref();
         async move {
             let is_function_fragment = next_id == CompletedFragmentId::Function;
-            is_function_fragment.then(())?;
+            is_function_fragment.then_some(())?;
             let ThisNode {id,..} = this.deref().as_ref()?;
             let opt_type         = graph.expression_type(*id).await.map(Into::into);
             opt_type.map_none(move || error!(logger, "Failed to obtain type for this node."))
@@ -845,6 +902,10 @@ impl Searcher {
         if matches!(self.mode.deref(), Mode::NewNode{..}) && self.this_arg.is_none() {
             actions.extend(self.database.iterate_examples().map(Action::Example));
             Self::add_enso_project_entries(&actions)?;
+            if self.ide.manage_projects().is_ok() {
+                let create_project = action::ProjectManagement::CreateNewProject;
+                actions.extend(std::iter::once(Action::ProjectManagement(create_project)));
+            }
         }
         for response in completion_responses {
             let response = response?;
@@ -932,7 +993,7 @@ impl Searcher {
     }
 
     fn module_qualified_name(&self) -> QualifiedName {
-        self.graph.graph().module.path().qualified_module_name(&*self.project_name)
+        self.graph.graph().module.path().qualified_module_name(&*self.ide.current_project().name())
     }
 
     /// Get the user action basing of current input (see `UserAction` docs).
@@ -959,6 +1020,34 @@ impl Searcher {
             actions.extend(std::iter::once(Action::Suggestion(Rc::new(entry))));
         }
         Ok(())
+    }
+
+    fn load_project_list(&self) {
+        let logger = self.logger.clone_ref();
+        let ide    = self.ide.clone_ref();
+        let data   = self.data.clone_ref();
+        executor::global::spawn(async move {
+            let result:FallibleResult<Vec<Action>> = async {
+                let manage_projects = ide.manage_projects()?;
+                let projects = manage_projects.list_projects().await?;
+                Ok(projects.into_iter().map(|project| {
+                    let id        = Immutable(project.id);
+                    let name      = project.name.0.into();
+                    let pm_action = action::ProjectManagement::OpenProject {id,name};
+                    Action::ProjectManagement(pm_action)
+                }).collect_vec())
+            }.await;
+            let actions = match result {
+                Ok(actions) => actions,
+                Err(err) => {
+                    error!(logger,"Cannot load projects list: {err}");
+                    default()
+                }
+            };
+            info!(logger,"Received list of projects: {actions:?}");
+            let list = Rc::new(action::List::from_actions(actions));
+            data.borrow_mut().actions = Actions::Loaded {list}
+        })
     }
 }
 
@@ -1027,6 +1116,7 @@ fn apply_this_argument(this_var:&str, ast:&Ast) -> Ast {
 pub mod test {
     use super::*;
 
+    use crate::controller::ide::plain::ProjectOperationsNotSupported;
     use crate::executor::test_utils::TestWithLocalPoolExecutor;
     use crate::model::SuggestionDatabase;
     use crate::model::suggestion_database::entry::Argument;
@@ -1040,6 +1130,8 @@ pub mod test {
     use json_rpc::expect_call;
     use utils::test::traits::*;
     use enso_protocol::language_server::SuggestionId;
+
+
 
     pub fn completion_response(results:&[SuggestionId]) -> language_server::response::Completion {
         language_server::response::Completion {
@@ -1112,25 +1204,32 @@ pub mod test {
             let mut client = language_server::MockClient::default();
             client.require_all_calls();
             client_setup(&mut data,&mut client);
-            let end_of_code = TextLocation::at_document_end(&data.graph.module.code);
-            let code_range  = TextLocation::at_document_begin()..=end_of_code;
-            let graph       = data.graph.controller();
-            let node        = &graph.graph().nodes().unwrap()[0];
-            let this        = ThisNode::new(vec![node.info.id()],&graph.graph());
-            let this        = data.selected_node.and_option(this);
-            let logger      = Logger::new("Searcher");// new_empty
-            let database    = Rc::new(SuggestionDatabase::new_empty(&logger));
+            let end_of_code  = TextLocation::at_document_end(&data.graph.module.code);
+            let code_range   = TextLocation::at_document_begin()..=end_of_code;
+            let graph        = data.graph.controller();
+            let node         = &graph.graph().nodes().unwrap()[0];
+            let this         = ThisNode::new(vec![node.info.id()],&graph.graph());
+            let this         = data.selected_node.and_option(this);
+            let logger       = Logger::new("Searcher");// new_empty
+            let database     = Rc::new(SuggestionDatabase::new_empty(&logger));
+            let mut ide      = controller::ide::MockAPI::new();
+            let mut project  = model::project::MockAPI::new();
+            let project_name = ImString::new(&data.graph.graph.project_name);
+            project.expect_name().returning_st(move || project_name.clone_ref());
+            let project     = Rc::new(project);
+            ide.expect_parser().return_const(Parser::new_or_panic());
+            ide.expect_current_project().returning_st(move || project.clone_ref());
+            ide.expect_manage_projects().returning_st(move || Err(ProjectOperationsNotSupported.into()));
             let module_name = QualifiedName::from_segments(PROJECT_NAME, &[MODULE_NAME]).unwrap();
             let searcher = Searcher {
                 graph,logger,database,
+                ide              : Rc::new(ide),
                 data             : default(),
                 notifier         : default(),
                 mode             : Immutable(Mode::NewNode {position:default()}),
                 language_server  : language_server::Connection::new_mock_rc(client),
-                parser           : Parser::new_or_panic(),
                 this_arg         : Rc::new(this),
                 position_in_code : Immutable(end_of_code),
-                project_name     : ImString::new(&data.graph.graph.project_name),
             };
             let entry1 = model::suggestion_database::Entry {
                 name          : "testFunction1".to_string(),
@@ -1256,7 +1355,7 @@ pub mod test {
             node_line:&'static str,
             /// If the searcher should enter "connect to this" mode at all and wait for type info.
             sets_this:bool,
-        };
+        }
 
         let cases = [
             Case {node_line:"2+2",             sets_this:true },
@@ -1370,7 +1469,7 @@ pub mod test {
                 for _ in 0..EXPECTED_REQUESTS {
                     let requested_types = requested_types2.clone();
                     client.expect.completion(move |_path,_position,_self_type,return_type,_tags| {
-                        iprintln!("Requested {return_type:?}.");
+                        DEBUG!("Requested {return_type:?}.");
                         requested_types.borrow_mut().insert(return_type.clone());
                         Ok(completion_response(&[]))
                     });
@@ -1380,7 +1479,7 @@ pub mod test {
             let Fixture{test,searcher,..} = &mut fixture;
             searcher.set_input(input.into()).unwrap();
             test.run_until_stalled();
-            iprintln!(">>>>> {requested_types.borrow().deref():?}");
+            DEBUG!(">>>>> {requested_types.borrow().deref():?}");
             assert_eq!(requested_types.borrow().len(),EXPECTED_REQUESTS);
             assert!(requested_types.borrow().contains(&Some("Number".to_string())));
             assert!(requested_types.borrow().contains(&Some("String".to_string())));
@@ -1581,7 +1680,7 @@ pub mod test {
             line   : &'static str,
             result : String,
             run    : Box<dyn FnOnce(&mut Fixture)>,
-        };
+        }
 
         impl Case {
             fn new(line:&'static str, result:&[&str], run:impl FnOnce(&mut Fixture)+'static )
@@ -1606,7 +1705,7 @@ pub mod test {
             // Completion was picked and edited.
             Case::new("2 + 2",&["sum1 = 2 + 2","operator1 = sum1.var.testFunction1"], |f| {
                 f.searcher.use_suggestion(f.entry1.clone()).unwrap();
-                let new_parsed_input = ParsedInput::new("var.testFunction1",&f.searcher.parser);
+                let new_parsed_input = ParsedInput::new("var.testFunction1",&f.searcher.ide.parser());
                 f.searcher.data.borrow_mut().input = new_parsed_input.unwrap();
             }),
             // Variable name already present, need to use it. And not break it.
@@ -1638,7 +1737,7 @@ pub mod test {
         fn expect_inserted_import_for(entry:&action::Suggestion, expected_import:Vec<&QualifiedName>) {
             let Fixture{test:_test,mut searcher,..} = Fixture::new();
             let module = searcher.graph.graph().module.clone_ref();
-            let parser = searcher.parser.clone_ref();
+            let parser = searcher.ide.parser().clone_ref();
 
             let picked_method = FragmentAddedByPickingSuggestion {
                 id                : CompletedFragmentId::Function,

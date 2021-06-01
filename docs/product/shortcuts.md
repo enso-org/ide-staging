@@ -33,6 +33,7 @@ further investigation.
 | -------- | ------ |
 | <kbd>cmd</kbd>+<kbd>alt</kbd>+<kbd>shift</kbd>+<kbd>t</kbd> | Toggle light/dark application style. Currently doesn't work properly, as the Theme Switcher is not created yet. (https://github.com/enso-org/ide/issues/795)|
 | <kbd>ctrl</kbd>+<kbd>`</kbd>                                | Show Code Editor. Please note that the Code Editor implementation is in a very early stage and you should not use it. Even just openning it can cause errors in the IDE. Do not try using the graph editor while having the code editor tab openned. |
+| <kbd>cmd</kbd>+<kbd>o</kbd>                                 | Open project |
 | <kbd>meta</kbd>+<kbd>s</kbd>                                | Save module |
 | <kbd>cmd</kbd>+<kbd>q</kbd>                                 | Close the application (MacOS) |
 | <kbd>ctrl</kbd>+<kbd>q</kbd>                                | Close the application (Linux) |
@@ -83,7 +84,7 @@ further investigation.
 | Shortcut | Action |
 | -------- | ------ |
 | <kbd>tab</kbd>                                   | Show / hide node searcher. |
-| <kbd>backspace</kbd>                             | Remove selected nodes. |
+| <kbd>backspace</kbd> or <kbd>delete</kbd>        | Remove selected nodes. |
 | <kbd>cmd</kbd>+<kbd>g</kbd>                      | Collapse (group) selected nodes. |
 | <kbd>meta</kbd>+<kbd>LMB</kbd>                   | Start editing node expression. |
 | <kbd>meta</kbd>+<kbd>enter</kbd>                 | Start editing node expression. |

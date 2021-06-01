@@ -85,16 +85,16 @@ impl Model {
         // FIXME[MM/WD]: Depth sorting of labels to in front of everything else in the scene.
         //  Temporary solution. The depth management needs to allow defining relative position of
         //  the text and background and let the whole component to be set to am an arbitrary layer.
-        label.remove_from_scene_layer_DEPRECATED(&scene.layers.main);
-        label.add_to_scene_layer_DEPRECATED(&scene.layers.tooltip_text);
-        scene.layers.tooltip_background.add_exclusive(&background);
+        label.remove_from_scene_layer(&scene.layers.main);
+        label.add_to_scene_layer(&scene.layers.tooltip_text);
+        scene.layers.tooltip.add_exclusive(&background);
 
         display_object.add_child(&background);
         display_object.add_child(&label);
 
         let style = StyleWatch::new(&app.display.scene().style_sheet);
 
-        Model {label,display_object,background,app,style}
+        Model {background,label,display_object,app,style}
     }
 
     pub fn height(&self) -> f32 {
@@ -154,7 +154,7 @@ impl Label {
     pub fn new(app:&Application) -> Self {
         let frp   = Rc::new(Frp::new());
         let model = Rc::new(Model::new(app.clone_ref()));
-        Label {frp,model}.init()
+        Label {model,frp}.init()
     }
 
     fn init(self) -> Self {

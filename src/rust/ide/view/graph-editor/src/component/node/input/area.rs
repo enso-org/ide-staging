@@ -153,7 +153,7 @@ impl From<node::Expression> for Expression {
             port.length      = size;
             ExprConversion::new(index)
         });
-        Self {code,viz_code,span_tree}
+        Self {viz_code,code,span_tree}
     }
 }
 
@@ -238,15 +238,15 @@ impl Model {
         display_object.add_child(&label);
         display_object.add_child(&ports);
         ports.add_child(&header);
-        Self {logger,display_object,ports,header,label,app,expression,id_crumbs_map,styles}.init()
+        Self {logger,app,display_object,ports,header,label,expression,id_crumbs_map,styles}.init()
     }
 
     fn init(self) -> Self {
         // FIXME[WD]: Depth sorting of labels to in front of the mouse pointer. Temporary solution.
         // It needs to be more flexible once we have proper depth management.
         let scene = self.app.display.scene();
-        self.label.remove_from_scene_layer_DEPRECATED(&scene.layers.main);
-        self.label.add_to_scene_layer_DEPRECATED(&scene.layers.label);
+        self.label.remove_from_scene_layer(&scene.layers.main);
+        self.label.add_to_scene_layer(&scene.layers.label);
 
         let text_color = self.styles.get_color(theme::graph_editor::node::text);
         self.label.single_line(true);
@@ -389,7 +389,7 @@ impl Area {
             eval frp.set_expression_usage_type (((a,b)) model.set_expression_usage_type(a,b));
         }
 
-        Self {model,frp}
+        Self {frp,model}
     }
 
     pub fn port_offset(&self, crumbs:&[Crumb]) -> Option<Vector2<f32>> {
@@ -448,7 +448,7 @@ impl PortLayerBuilder {
     , depth           : usize
     ) -> Self {
         let parent = parent.display_object().clone_ref();
-        Self {parent,parent_frp,parent_parensed,shift,depth}
+        Self {parent_frp,parent,parent_parensed,shift,depth}
     }
 
     fn empty(parent:impl display::Object) -> Self {
@@ -497,7 +497,7 @@ impl Area {
 
             if let Some(id) = node.ast_id {
                 if DEBUG {
-                    println!("New id mapping: {} -> {:?}",id,node.crumbs);
+                    DEBUG!("New id mapping: {id} -> {node.crumbs:?}");
                 }
                 id_crumbs_map.insert(id,node.crumbs.clone_ref());
             }
@@ -505,8 +505,8 @@ impl Area {
             if DEBUG {
                 let indent  = " ".repeat(4*builder.depth);
                 let skipped = if not_a_port { "(skip)" } else { "" };
-                println!("{}[{},{}] {} {:?} (tp: {:?}) (id: {:?})",indent,node.payload.index,
-                    node.payload.length,skipped,node.kind.variant_name(),node.tp(),node.ast_id);
+                DEBUG!("{indent}[{node.payload.index},{node.payload.length}] \
+                {skipped} {node.kind.variant_name():?} (tp: {node.tp():?}) (id: {node.ast_id:?})");
             }
 
             let new_parent = if not_a_port {
@@ -738,7 +738,7 @@ impl Area {
 
     pub(crate) fn set_expression(&self, new_expression:impl Into<node::Expression>) {
         let mut new_expression = Expression::from(new_expression.into());
-        if DEBUG { println!("\n\n=====================\nSET EXPR: {}", new_expression.code) }
+        if DEBUG { DEBUG!("\n\n=====================\nSET EXPR: " new_expression.code) }
         self.set_label_on_new_expression(&new_expression);
         self.build_port_shapes_on_new_expression(&mut new_expression);
         self.init_port_frp_on_new_expression(&mut new_expression);

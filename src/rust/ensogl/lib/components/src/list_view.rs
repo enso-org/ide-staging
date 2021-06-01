@@ -13,6 +13,7 @@ use ensogl_core::application;
 use ensogl_core::application::Application;
 use ensogl_core::application::shortcut;
 use ensogl_core::display;
+use ensogl_core::display::scene::layer::LayerId;
 use ensogl_core::display::shape::*;
 use ensogl_core::DEPRECATED_Animation;
 use ensogl_theme as theme;
@@ -116,7 +117,7 @@ impl Model {
         display_object.add_child(&scrolled_area);
         scrolled_area.add_child(&entries);
         scrolled_area.add_child(&selection);
-        Model{app,entries,selection,background,display_object,scrolled_area}
+        Model{app,entries,selection,background,scrolled_area,display_object}
     }
 
     fn padding(&self) -> f32 {
@@ -250,7 +251,7 @@ impl ListView {
     pub fn new(app:&Application) -> Self {
         let frp   = Frp::new();
         let model = Model::new(app);
-        ListView {frp,model}.init(app)
+        ListView {model,frp}.init(app)
     }
 
     fn init(self, app:&Application) -> Self {
@@ -411,6 +412,11 @@ impl ListView {
         frp.scroll_jump(MAX_SCROLL);
 
         self
+    }
+
+    /// Sets the scene layer where the labels will be placed.
+    pub fn set_label_layer(&self, layer:LayerId) {
+        self.model.entries.set_label_layer(layer);
     }
 }
 

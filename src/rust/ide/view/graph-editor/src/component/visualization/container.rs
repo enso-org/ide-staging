@@ -268,8 +268,8 @@ impl ContainerModel {
         let action_bar         = ActionBar::new(&app,registry.clone_ref());
         view.add_child(&action_bar);
 
-        Self {logger,visualization,vis_frp_connection,display_object,drag_root,view,fullscreen_view
-            ,scene,is_fullscreen,action_bar,registry,size}.init()
+        Self {logger,display_object,drag_root,visualization,vis_frp_connection,scene,view
+            ,fullscreen_view,is_fullscreen,registry,size,action_bar}.init()
     }
 
     fn init(self) -> Self {
@@ -584,7 +584,7 @@ impl Container {
                     model.set_corner_roundness(weight_inv);
                     model.set_size(current_size);
 
-                    let m1  = model.scene.layers.viz_fullscreen.camera().inversed_view_matrix();
+                    let m1  = model.scene.layers.panel.camera().inversed_view_matrix();
                     let m2  = model.scene.layers.viz.camera().view_matrix();
                     let pos = model.global_position();
                     let pos = Vector4::new(pos.x,pos.y,pos.z,1.0);

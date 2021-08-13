@@ -1,4 +1,4 @@
-# Enso 2.0.0-alpha.11 (2021-08-06)
+# Enso 2.0.0-alpha.11.1 (2021-08-13)
 
 This update contains major performance improvements and exposes new privacy user
 settings. We will work towards stabilizing it in the next weeks in order to make

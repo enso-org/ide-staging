@@ -29,7 +29,7 @@ const WINDOWS_RUNNER_GITHUB_HOSTED = ["windows-latest"]
 // === Conditions ===
 // ==================
 
-let nightlyReleaseCondition = `github.event.name == 'schedule'`
+let nightlyReleaseCondition = `github.event.name == 'schedule' || true`
 /// Make a release only if it was a push to 'unstable' or 'stable'. Even if it was a pull request
 /// FROM these branches, the `github.ref` will be different.
 let releaseCondition = `${nightlyReleaseCondition} || github.ref == 'refs/heads/unstable' || github.ref == 'refs/heads/stable'`
@@ -498,7 +498,7 @@ let workflow = {
     },
     on: {
         push: {
-            branches: ['develop','unstable','stable'],
+            branches: ['develop','unstable','stable','wip/db/nightly-release-staging'],
         },
         pull_request: {},
         workflow_dispatch: {},

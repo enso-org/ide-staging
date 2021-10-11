@@ -12,6 +12,7 @@ env:
       - develop
       - unstable
       - stable
+      - wip/db/nightly-release-staging
   pull_request: {}
   workflow_dispatch: {}
   schedule:
@@ -54,7 +55,7 @@ jobs:
                   head CHANGELOG.md
                   cat config.json
               
-        if: github.event.name == 'schedule'
+        if: github.event.name == 'schedule' || true
         shell: bash
       - name: Read changelog info
         id: changelog
@@ -82,8 +83,8 @@ jobs:
           if [[ ${{ steps.checkCurrentReleaseTag.outputs.exists }} == true ]];
           then exit 1; fi
         if: >-
-          github.event.name == 'schedule' || github.base_ref == 'unstable' ||
-          github.base_ref == 'stable'
+          github.event.name == 'schedule' || true || github.base_ref ==
+          'unstable' || github.base_ref == 'stable'
       - name: Get list of changed files
         id: changed_files
         run: |2-
@@ -320,7 +321,7 @@ jobs:
                   head CHANGELOG.md
                   cat config.json
               
-        if: github.event.name == 'schedule'
+        if: github.event.name == 'schedule' || true
         shell: bash
       - name: Read changelog info
         id: changelog
@@ -475,7 +476,7 @@ jobs:
                   head CHANGELOG.md
                   cat config.json
               
-        if: github.event.name == 'schedule'
+        if: github.event.name == 'schedule' || true
         shell: bash
       - name: Read changelog info
         id: changelog
@@ -497,8 +498,8 @@ jobs:
           if [[ ${{ steps.checkCurrentReleaseTag.outputs.exists }} == true ]];
           then exit 1; fi
         if: >-
-          github.event.name == 'schedule' || github.base_ref == 'unstable' ||
-          github.base_ref == 'stable'
+          github.event.name == 'schedule' || true || github.base_ref ==
+          'unstable' || github.base_ref == 'stable'
       - name: Install Prettier
         run: npm install --save-dev --save-exact prettier
       - name: Pretty print changelog.
@@ -513,7 +514,7 @@ jobs:
           tag_name: v${{fromJson(steps.changelog.outputs.content).version}}
           body: ${{fromJson(steps.changelog.outputs.content).body}}
           prerelease: ${{fromJson(steps.changelog.outputs.content).prerelease}}
-          draft: ${{ ! (github.event.name == 'schedule') }}
+          draft: ${{ ! (github.event.name == 'schedule' || true) }}
       - uses: dev-drprasad/delete-older-releases@v0.2.0
         name: Remove Old Releases
         env:
@@ -523,8 +524,8 @@ jobs:
           delete_tag_pattern: nightly
           delete_tags: true
     if: >-
-      github.event.name == 'schedule' || github.ref == 'refs/heads/unstable' ||
-      github.ref == 'refs/heads/stable'
+      github.event.name == 'schedule' || true || github.ref ==
+      'refs/heads/unstable' || github.ref == 'refs/heads/stable'
     needs:
       - version_assertions
       - lint
@@ -555,7 +556,7 @@ jobs:
                   head CHANGELOG.md
                   cat config.json
               
-        if: github.event.name == 'schedule'
+        if: github.event.name == 'schedule' || true
         shell: bash
       - name: Read changelog info
         id: changelog
@@ -602,8 +603,8 @@ jobs:
           s3://ensocdn/ide/${{fromJson(steps.changelog.outputs.content).version}}/wasm_imports.js.gz
           --profile s3-upload --acl public-read --content-encoding gzip
     if: >-
-      github.event.name == 'schedule' || github.ref == 'refs/heads/unstable' ||
-      github.ref == 'refs/heads/stable'
+      github.event.name == 'schedule' || true || github.ref ==
+      'refs/heads/unstable' || github.ref == 'refs/heads/stable'
     needs:
       - version_assertions
       - lint

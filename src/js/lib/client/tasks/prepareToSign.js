@@ -8,7 +8,7 @@ const { beforeSign } = require('./signArchives')
 
 exports.default = async function (context) {
     console.log("prepareToSign", { context })
-    if (context.platform === 'darwin') {
+    if (context.electronPlatformName === 'darwin') {
         beforeSign()
     }
 }

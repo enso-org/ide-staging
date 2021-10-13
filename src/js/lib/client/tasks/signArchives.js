@@ -13,6 +13,7 @@
  dependency.
  This script should be removed once the engine is signed.
 **/
+const fs   = require('fs')
 const path = require('path')
 const child_process = require('child_process')
 const { dist } = require('../../../../../build/paths')
@@ -258,7 +259,16 @@ const extra = [
     `enso/runtime/${GRAALVM}/Contents/Home/languages/R/library/survival/libs/survival.so`,
 ]
 
+const readonly = [
+    `enso/runtime/${GRAALVM}/Contents/Home/lib/server/classes.jsa`,
+]
+
 exports.default = async function () {
+    // Make readonly files writeable.
+    for (let file of readonly) {
+        const target = path.join(resRoot, file)
+        fs.chmodSync(target, 0644)
+    }
     // Sign archives.
     for (let toSignData of toSign) {
         const jarDir = path.join(resRoot, toSignData.jarDir)
@@ -274,4 +284,9 @@ exports.default = async function () {
     }
     // Finally re-sign the top-level enso.
     sign(path.join(contentRoot, 'MacOs/Enso'))
+    // Restore readonly files.
+    for (let file of readonly) {
+        const target = path.join(resRoot, file)
+        fs.chmodSync(target, 0444)
+    }
 }

@@ -1,4 +1,4 @@
-const { beforeSign } = require('./signArghives')
+const { beforeSign } = require('./signArchives')
 
 
 

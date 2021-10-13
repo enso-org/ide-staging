@@ -267,7 +267,7 @@ exports.default = async function () {
     // Make readonly files writeable.
     for (let file of readonly) {
         const target = path.join(resRoot, file)
-        fs.chmodSync(target, 0644)
+        fs.chmodSync(target, 0o666)
     }
     // Sign archives.
     for (let toSignData of toSign) {
@@ -285,8 +285,8 @@ exports.default = async function () {
     // Finally re-sign the top-level enso.
     sign(path.join(contentRoot, 'MacOs/Enso'))
     // Restore readonly files.
-    for (let file of readonly) {
-        const target = path.join(resRoot, file)
-        fs.chmodSync(target, 0444)
-    }
+    // for (let file of readonly) {
+    //     const target = path.join(resRoot, file)
+    //     fs.chmodSync(target, 0o444)
+    // }
 }

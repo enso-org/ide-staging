@@ -265,8 +265,10 @@ const readonly = [
 
 exports.default = async function () {
     // Make readonly files writeable.
+    console.log('!!!!!!!! signArchives !!!!!')
     for (let file of readonly) {
         const target = path.join(resRoot, file)
+        console.log('update readonly', target)
         fs.chmodSync(target, 0o666)
     }
     // Sign archives.

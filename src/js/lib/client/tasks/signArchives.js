@@ -13,7 +13,7 @@
  dependency.
  This script should be removed once the engine is signed.
 **/
-const fs   = require('fs')
+const fs = require('fs')
 const path = require('path')
 const child_process = require('child_process')
 const { dist } = require('../../../../../build/paths')
@@ -259,18 +259,19 @@ const extra = [
     `enso/runtime/${GRAALVM}/Contents/Home/languages/R/library/survival/libs/survival.so`,
 ]
 
+// The list of readonly files in the GraalVM distribution.
 const readonly = [
     `enso/runtime/${GRAALVM}/Contents/Home/lib/server/classes.jsa`,
 ]
 
-exports.default = async function () {
-    // Make readonly files writeable.
-    console.log('!!!!!!!! signArchives !!!!!')
+function beforeSign() {
     for (let file of readonly) {
         const target = path.join(resRoot, file)
-        console.log('update readonly', target)
-        fs.chmodSync(target, 0o666)
+        fs.chmodSync(target, 0o644)
     }
+}
+
+exports.default = async function () {
     // Sign archives.
     for (let toSignData of toSign) {
         const jarDir = path.join(resRoot, toSignData.jarDir)
@@ -286,9 +287,6 @@ exports.default = async function () {
     }
     // Finally re-sign the top-level enso.
     sign(path.join(contentRoot, 'MacOs/Enso'))
-    // Restore readonly files.
-    // for (let file of readonly) {
-    //     const target = path.join(resRoot, file)
-    //     fs.chmodSync(target, 0o444)
-    // }
 }
+
+module.exports = { beforeSign }

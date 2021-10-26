@@ -468,6 +468,11 @@ let workflow = {
         pull_request: {},
         workflow_dispatch: {}
     },
+    defaults: {
+        run: {
+            "working-directory": "enso"
+        }
+    },
     jobs: {
         info: job_on_macos("Build Info", [
             dumpGitHubContext

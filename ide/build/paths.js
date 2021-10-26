@@ -17,7 +17,7 @@ paths.script.root         = path.join(paths.root,'build')
 paths.script.run          = path.join(paths.script.root,'run')
 
 paths.github              = {}
-paths.github.root         = path.join(paths.root,'.github')
+paths.github.root         = path.join(paths.root,'..','.github')
 paths.github.workflows    = path.join(paths.github.root,'workflows')
 
 paths.dist                = {}

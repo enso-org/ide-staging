@@ -1,11 +1,11 @@
-name: Publish Developer Docs
+name: "[IDE] Publish Developer Docs"
 
 on:
   push:
     branches:
       - develop
     paths:
-      - 'docs/**'
+      - 'ide/docs/**'
 
 jobs:
   checkout:

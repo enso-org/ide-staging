@@ -12,6 +12,9 @@ name: GUI CI
       - stable
   pull_request: {}
   workflow_dispatch: {}
+defaults:
+  run:
+    working-directory: enso
 jobs:
   info:
     name: Build Info

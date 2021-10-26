@@ -470,7 +470,7 @@ let workflow = {
     },
     defaults: {
         run: {
-            "working-directory": "enso"
+            "working-directory": "ide"
         }
     },
     jobs: {

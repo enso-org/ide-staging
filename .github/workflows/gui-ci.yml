@@ -14,7 +14,7 @@ name: GUI CI
   workflow_dispatch: {}
 defaults:
   run:
-    working-directory: enso
+    working-directory: ide
 jobs:
   info:
     name: Build Info

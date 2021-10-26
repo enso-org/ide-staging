@@ -238,7 +238,7 @@ let uploadWASM = {
     uses: "actions/upload-artifact@v2",
     with: {
         name: 'ide-wasm',
-        path: `dist/wasm`
+        path: `ide/dist/wasm`
     }
 }
 
@@ -247,7 +247,7 @@ let downloadWASM = {
     uses: "actions/download-artifact@v2",
     with: {
         name: 'ide-wasm',
-        path: `dist/wasm`
+        path: `ide/dist/wasm`
     }
 }
 
@@ -263,7 +263,7 @@ function uploadArtifactsFor(name,ext,os) {
         uses: "actions/upload-artifact@v1",
         with: {
             name: `enso-${os}-\${{fromJson(steps.changelog.outputs.content).version}}.${ext}`,
-            path: `dist/client/enso-${os}-\${{fromJson(steps.changelog.outputs.content).version}}.${ext}`
+            path: `ide/dist/client/enso-${os}-\${{fromJson(steps.changelog.outputs.content).version}}.${ext}`
         },
         if: `runner.os == '${name}'`,
     }

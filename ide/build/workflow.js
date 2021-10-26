@@ -228,7 +228,7 @@ let uploadContentLinux = {
     uses: "actions/upload-artifact@v2",
     with: {
         name: 'content',
-        path: `dist/content`
+        path: `ide/dist/content`
     },
     if: `runner.os == 'Linux'`
 }
